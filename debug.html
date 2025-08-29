@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<!-- fresh install debug v1 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>RipleyWeather.us Debug Page</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { background:#0c0c0c; color:#00ff66; font-family:monospace; margin:0; padding:20px; }
+    h1 { color:#00ff66; border-bottom:2px dashed #00ff66; padding-bottom:10px; }
+    pre { background:#111; border:1px solid #333; padding:12px; overflow-x:auto; white-space:pre-wrap; word-break:break-word; }
+    .meta { margin-bottom:1em; }
+  </style>
+</head>
+<body>
+  <h1>🌐 RipleyWeather.us Debug Page</h1>
+  <div class="meta">
+    <p><strong>Timestamp:</strong> <span id="ts"></span></p>
+    <p><strong>Page URL:</strong> <span id="url"></span></p>
+    <p><strong>User Agent:</strong> <span id="ua"></span></p>
+  </div>
+
+  <h2>Raw Report Payload</h2>
+  <pre id="output">Loading…</pre>
+
+  <script>
+    document.getElementById("ts").textContent = new Date().toString();
+    document.getElementById("url").textContent = window.location.href;
+    document.getElementById("ua").textContent = navigator.userAgent;
+
+    // Same working Apps Script URL as index.html
+    const EXEC_URL = "https://script.google.com/macros/s/AKfycbxEHXreFLXPTRzpnbU4Zzhz09iLXD9TyzxSyeTFfz6vzXLXzJdHcisLpHEHKH3U35K36w/exec";
+
+    function loadJSONP() {
+      const cb = "render_" + Date.now();
+      window[cb] = (report) => {
+        document.getElementById("output").textContent = JSON.stringify(report, null, 2);
+        delete window[cb];
+      };
+      const s = document.createElement("script");
+      s.src = `${EXEC_URL}?format=jsonp&callback=${cb}&t=${Date.now()}`;
+      document.body.appendChild(s);
+    }
+    loadJSONP();
+  </script>
+</body>
+</html>
