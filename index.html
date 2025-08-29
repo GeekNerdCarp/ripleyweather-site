@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- bump ripleyweather-2025-08-29-theme-persist -->
+<!-- bump ripleyweather-2025-08-29-2338 -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -8,23 +8,17 @@
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
   <meta http-equiv="Pragma" content="no-cache" />
   <style>
-    /* ===== THEME TOKENS ===== */
     :root{
       --bg:#0f2f5a; --bg2:#0a1b33; --panel:#0f2a4d; --muted:#cfe6ff; --text:#fff; --accent:#b9e3ff; --border:#1b4f85;
       --banner-bg:#222; --banner-text:#fff;
     }
-    /* NOAA Classic (royal blue / white / caution red accents) */
     .theme-noaa{
       --bg:#1a4fa0; --bg2:#0f2f5a; --panel:#0e3c7a; --muted:#e8f2ff; --text:#ffffff; --accent:#ffec99; --border:#123a72;
       --banner-bg:#b30000; --banner-text:#fff;
     }
-    /* Severe Mode (auto when alerts present) */
-    .severe-on header, .severe-on .banner {
-      animation: pulse 1s infinite alternate;
-    }
+    .severe-on header, .severe-on .banner { animation: pulse 1s infinite alternate; }
     @keyframes pulse { from{ box-shadow:0 0 0 0 rgba(255,0,0,.35) } to{ box-shadow:0 0 12px 6px rgba(255,0,0,.45) } }
 
-    /* ===== LAYOUT ===== */
     *{box-sizing:border-box}
     body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);font:500 16px/1.5 system-ui,Segoe UI,Roboto,Arial}
     header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,rgba(0,0,0,.15),rgba(0,0,0,.25));backdrop-filter:saturate(1.1) blur(4px);
@@ -50,6 +44,7 @@
     .table7{width:100%;border-collapse:collapse}
     .table7 thead th{background:rgba(255,255,255,.08);text-align:left;padding:8px 10px}
     .table7 td{border-top:1px solid rgba(255,255,255,.08);padding:8px 10px}
+    .build {font-size:.85rem; color:var(--muted)}
   </style>
 </head>
 <body>
@@ -61,6 +56,7 @@
       <div>
         <div id="runTitle" style="font-weight:800">Ripley Weather</div>
         <div id="runStamp" class="muted" style="font-size:.9rem">—</div>
+        <div class="build">UI Build: <span id="uiBuild">rw-ui-2025-08-29-2338</span> • Data Build: <span id="dataBuild">—</span></div>
       </div>
     </div>
     <div class="controls">
@@ -108,9 +104,14 @@
   </main>
 
   <script>
+    // === Build IDs & cache buster ===
+    const UI_BUILD = 'rw-ui-2025-08-29-2338';       // <— update when HTML changes
+    const REV      = 'rw-cachebuster-v3';           // <— forces a fresh JSONP load path
+
     // Your current working Apps Script data URL:
     const EXEC_URL = "https://script.google.com/macros/s/AKfycbxEHXreFLXPTRzpnbU4Zzhz09iLXD9TyzxSyeTFfz6vzXLXzJdHcisLpHEHKH3U35K36w/exec";
-    const REV = "rw-cachebuster-v1";
+
+    document.getElementById('uiBuild').textContent = UI_BUILD;
 
     const map = {
       quickHtml:'quick', cardsHtml:'cards', sevenHtml:'sevenDay', plannerHtml:'hourly',
@@ -122,7 +123,9 @@
     function applyReport(r){
       document.title = r?.meta?.runTitle || 'Current Ripley, OH Weather Outlook';
       document.getElementById('runTitle').textContent = r?.meta?.runTitle || 'Ripley Weather';
-      document.getElementById('runStamp').textContent = r?.meta?.runTime ? `${r.meta.runTime} • #${r.meta.totalToday||'—'}` : '—';
+      document.getElementById('runStamp').textContent = r?.meta?.runTime ? `${r.meta.runTime} • #${r.meta?.totalToday ?? '—'}` : '—';
+      document.getElementById('dataBuild').textContent = r?.meta?.buildId || '—';
+
       const afd = document.getElementById('afdLink'); if (afd && r?.afdLink) afd.href = r.afdLink;
 
       for (const id in map){
@@ -144,6 +147,7 @@
       const cb = 'cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
       window[cb] = (data)=>{ try{ applyReport(data); } finally { delete window[cb]; } };
       const s = document.createElement('script');
+      // REV + timestamp make the URL unique each call
       s.src = `${EXEC_URL}?format=jsonp&callback=${cb}&rev=${encodeURIComponent(REV)}&t=${Date.now()}`;
       s.defer = true;
       s.onerror = ()=>{
@@ -162,7 +166,6 @@
       localStorage.setItem('rwTheme', val);
     }
     sel.addEventListener('change', ()=> applyTheme(sel.value));
-    // initialize
     applyTheme(localStorage.getItem('rwTheme') || 'default');
 
     // Refresh button
