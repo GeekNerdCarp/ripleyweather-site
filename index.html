@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- bump fresh_01 -->
+<!-- bump cachebuster-v1 -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -80,9 +80,9 @@
   </main>
 
   <script>
-    // ==== Replace with your working Apps Script URL ====
+    // Replace with your current working Apps Script EXEC_URL
     const EXEC_URL = "https://script.google.com/macros/s/AKfycbxEHXreFLXPTRzpnbU4Zzhz09iLXD9TyzxSyeTFfz6vzXLXzJdHcisLpHEHKH3U35K36w/exec";
-    const REV = "fresh-install-v1";
+    const REV = "cachebuster-v1";
 
     const map = {
       quickHtml:'quick', cardsHtml:'cards', sevenHtml:'sevenDay', plannerHtml:'hourly',
@@ -110,6 +110,7 @@
       const cb = 'cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
       window[cb] = (data)=>{ try{ applyReport(data); } finally { delete window[cb]; } };
       const s = document.createElement('script');
+      // 👇 cache-buster always included
       s.src = `${EXEC_URL}?format=jsonp&callback=${cb}&rev=${encodeURIComponent(REV)}&t=${Date.now()}`;
       s.defer = true;
       s.onerror = ()=>{
