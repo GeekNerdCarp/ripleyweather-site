@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- bump cachebuster-v1 -->
+<!-- bump ripleyweather-2025-08-29-theme-persist -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -8,30 +8,53 @@
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
   <meta http-equiv="Pragma" content="no-cache" />
   <style>
+    /* ===== THEME TOKENS ===== */
     :root{
       --bg:#0f2f5a; --bg2:#0a1b33; --panel:#0f2a4d; --muted:#cfe6ff; --text:#fff; --accent:#b9e3ff; --border:#1b4f85;
+      --banner-bg:#222; --banner-text:#fff;
     }
+    /* NOAA Classic (royal blue / white / caution red accents) */
+    .theme-noaa{
+      --bg:#1a4fa0; --bg2:#0f2f5a; --panel:#0e3c7a; --muted:#e8f2ff; --text:#ffffff; --accent:#ffec99; --border:#123a72;
+      --banner-bg:#b30000; --banner-text:#fff;
+    }
+    /* Severe Mode (auto when alerts present) */
+    .severe-on header, .severe-on .banner {
+      animation: pulse 1s infinite alternate;
+    }
+    @keyframes pulse { from{ box-shadow:0 0 0 0 rgba(255,0,0,.35) } to{ box-shadow:0 0 12px 6px rgba(255,0,0,.45) } }
+
+    /* ===== LAYOUT ===== */
     *{box-sizing:border-box}
     body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);font:500 16px/1.5 system-ui,Segoe UI,Roboto,Arial}
-    header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,#13457f,#0f2f5a);border-bottom:2px solid var(--border);padding:10px 14px;display:flex;gap:12px;align-items:center;justify-content:space-between}
+    header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,rgba(0,0,0,.15),rgba(0,0,0,.25));backdrop-filter:saturate(1.1) blur(4px);
+           border-bottom:2px solid var(--border);padding:10px 14px;display:flex;gap:12px;align-items:center;justify-content:space-between}
     .brand{display:flex;gap:12px;align-items:center}
     .logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#009ad6,#005aa3);display:grid;place-items:center;font-weight:800}
     .muted{color:var(--muted)}
     .controls{display:flex;gap:8px;align-items:center}
-    button{background:#0b2b52;border:1px solid var(--border);color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
+    select,button{background:#0b2b52;border:1px solid var(--border);color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
     button:disabled{opacity:.6}
     #spin{display:none;width:.8em;height:.8em;background:#fff;border-radius:50%;animation:pulse .9s infinite alternate}
-    @keyframes pulse{from{opacity:.35} to{opacity:1}}
     main{max-width:1100px;margin:0 auto;padding:14px}
     section.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;margin:14px 0;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.25)}
-    .bar{padding:10px 14px;font-weight:800;background:linear-gradient(180deg,#13457f,#0f2f5a);border-bottom:3px solid #143c6a50;display:flex;gap:10px;align-items:center}
+    .bar{padding:10px 14px;font-weight:800;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(0,0,0,.15));border-bottom:2px solid #00000040;display:flex;gap:10px;align-items:center}
     .body{padding:12px 14px}
     a{color:var(--accent)}
     footer{margin:18px 0 24px;color:var(--muted);font-size:.9rem}
     footer ul{margin:.4rem 0 0 1rem}
+
+    .banner{display:none;margin:0;padding:10px 14px;background:var(--banner-bg);color:var(--banner-text);font-weight:800;text-align:center}
+    .banner.on{display:block}
+    .list-compact li{margin-bottom:6px}
+    .table7{width:100%;border-collapse:collapse}
+    .table7 thead th{background:rgba(255,255,255,.08);text-align:left;padding:8px 10px}
+    .table7 td{border-top:1px solid rgba(255,255,255,.08);padding:8px 10px}
   </style>
 </head>
 <body>
+  <div id="sevBanner" class="banner">⛈️ Severe Weather Currently in the Area</div>
+
   <header>
     <div class="brand">
       <div class="logo">WX</div>
@@ -41,21 +64,26 @@
       </div>
     </div>
     <div class="controls">
+      <label for="theme" class="muted" style="margin-right:4px">Theme</label>
+      <select id="theme">
+        <option value="default">Modern</option>
+        <option value="noaa">NOAA Classic</option>
+      </select>
       <button id="refreshBtn">↻ Refresh</button>
       <span id="spin" aria-hidden="true"></span>
     </div>
   </header>
 
   <main>
-    <section class="card"><div class="bar">🔎 Quick Look</div><div id="quickHtml" class="body">Loading…</div></section>
-    <section class="card"><div class="bar">📋 Key Cards</div><div id="cardsHtml" class="body">Loading…</div></section>
+    <section class="card"><div class="bar">🔎 Quick Look</div><div id="quickHtml" class="body list-compact">Loading…</div></section>
+    <section class="card"><div class="bar">📋 Key Cards</div><div id="cardsHtml" class="body list-compact">Loading…</div></section>
     <section class="card"><div class="bar">📝 AFD (External)</div>
       <div class="body"><a id="afdLink" href="#" target="_blank" rel="noopener">Open latest NWS ILN AFD</a></div>
     </section>
     <section class="card"><div class="bar">📆 7-Day Outlook</div><div id="sevenHtml" class="body">Loading…</div></section>
-    <section class="card"><div class="bar">🕒 24-Hour Planner</div><div id="plannerHtml" class="body">Loading…</div></section>
-    <section class="card"><div class="bar">📈 Trends & Diagnostics</div><div id="trendsHtml" class="body">Loading…</div></section>
-    <section class="card"><div class="bar">⛈ Severe Weather</div><div id="severeHtml" class="body">Loading…</div></section>
+    <section class="card"><div class="bar">🕒 24-Hour Planner</div><div id="plannerHtml" class="body list-compact">Loading…</div></section>
+    <section class="card"><div class="bar">📈 Trends & Diagnostics</div><div id="trendsHtml" class="body list-compact">Loading…</div></section>
+    <section class="card"><div class="bar">⛈ Storm Outlook</div><div id="severeHtml" class="body list-compact">Loading…</div></section>
     <section class="card"><div class="bar">🛰 Radar & Satellite</div><div id="radarHtml" class="body">Loading…</div></section>
     <section class="card"><div class="bar">⚡ Lightning</div><div id="lightningHtml" class="body">Loading…</div></section>
     <section class="card"><div class="bar">⚠️ Alerts & Hazards</div><div id="alertsHtml" class="body">Loading…</div></section>
@@ -70,9 +98,9 @@
       <div><strong>Created by Matthew Carpenter</strong> — <a href="mailto:matthew@carpsemail.com">matthew@carpsemail.com</a></div>
       <div style="margin-top:.4rem"><em>Data Sources:</em></div>
       <ul>
-        <li>NOAA / NWS ILN — Forecast, Alerts</li>
-        <li>Open-Meteo — Backup Forecast & Astronomy</li>
-        <li>AirNow — AQI (when available)</li>
+        <li>NOAA / NWS ILN — 7-Day Forecast, Alerts</li>
+        <li>Open-Meteo — Current, Hourly & Backup Daily</li>
+        <li>AirNow — AQI</li>
         <li>LightningMaps.org — live strikes</li>
         <li>GOES / NWS imagery — radar & satellite</li>
       </ul>
@@ -80,9 +108,9 @@
   </main>
 
   <script>
-    // Replace with your current working Apps Script EXEC_URL
+    // Your current working Apps Script data URL:
     const EXEC_URL = "https://script.google.com/macros/s/AKfycbxEHXreFLXPTRzpnbU4Zzhz09iLXD9TyzxSyeTFfz6vzXLXzJdHcisLpHEHKH3U35K36w/exec";
-    const REV = "cachebuster-v1";
+    const REV = "rw-cachebuster-v1";
 
     const map = {
       quickHtml:'quick', cardsHtml:'cards', sevenHtml:'sevenDay', plannerHtml:'hourly',
@@ -102,6 +130,12 @@
         const key = map[id];
         el.innerHTML = r && r[key] ? r[key] : '<p class="muted">— (no data)</p>';
       }
+
+      const alertsHtml = (r && r.alerts) ? String(r.alerts) : '';
+      const hasSevere = alertsHtml && !/No active/i.test(alertsHtml);
+      document.getElementById('sevBanner').classList.toggle('on', hasSevere);
+      document.body.classList.toggle('severe-on', hasSevere);
+
       document.getElementById('spin').style.display='none';
       document.getElementById('refreshBtn').disabled=false;
     }
@@ -110,7 +144,6 @@
       const cb = 'cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
       window[cb] = (data)=>{ try{ applyReport(data); } finally { delete window[cb]; } };
       const s = document.createElement('script');
-      // 👇 cache-buster always included
       s.src = `${EXEC_URL}?format=jsonp&callback=${cb}&rev=${encodeURIComponent(REV)}&t=${Date.now()}`;
       s.defer = true;
       s.onerror = ()=>{
@@ -121,12 +154,25 @@
       document.head.appendChild(s);
     }
 
+    // Theme with persistence
+    const sel = document.getElementById('theme');
+    function applyTheme(val){
+      document.body.classList.toggle('theme-noaa', val === 'noaa');
+      sel.value = val;
+      localStorage.setItem('rwTheme', val);
+    }
+    sel.addEventListener('change', ()=> applyTheme(sel.value));
+    // initialize
+    applyTheme(localStorage.getItem('rwTheme') || 'default');
+
+    // Refresh button
     document.getElementById('refreshBtn').addEventListener('click', ()=>{
       document.getElementById('refreshBtn').disabled=true;
       document.getElementById('spin').style.display='inline-block';
       loadJSONP();
     });
 
+    // Initial load
     loadJSONP();
   </script>
 </body>
