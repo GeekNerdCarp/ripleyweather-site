@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Ripley Weather • Debug Console</title>
+<style>
+  :root { --bg:#0c1220; --panel:#121c33; --accent:#62c2ff; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; --muted:#a3b8d1; }
+  *{box-sizing:border-box}
+  body{margin:0; font: 14px/1.4 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif; color:#eaf3ff;
+       background:linear-gradient(180deg,#0c1220,#0a1020 70%)}
+  header{position:sticky;top:0;z-index:5; background:#0f162a; border-bottom:1px solid #1f2c4a; padding:10px 14px; display:flex; gap:10px; align-items:center; justify-content:space-between}
+  main{max-width:1100px; margin:0 auto; padding:14px}
+  section{background:#121c33; border:1px solid #253557; border-radius:10px; padding:12px; margin:12px 0}
+  h2{margin:0 0 8px; font-size:1rem}
+  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  input[type=text]{width:100%; max-width:680px; padding:8px 10px; background:#0f162a; color:#eaf3ff; border:1px solid #2a416a; border-radius:8px}
+  button{background:#163659; color:#fff; border:1px solid #2a5c91; padding:8px 10px; border-radius:8px; cursor:pointer}
+  button:hover{filter:brightness(1.07)}
+  code, pre{background:#0e1630; border:1px solid #22355c; border-radius:8px; padding:8px; display:block; overflow:auto; white-space:pre-wrap}
+  .pill{display:inline-block; padding:3px 8px; border-radius:999px; font-weight:700}
+  .ok{background:#12351f; color:#7af08f; border:1px solid #1f6a34}
+  .warn{background:#3b2a12; color:#ffcc7a; border:1px solid #6b4a1f}
+  .err{background:#3b1212; color:#ff8b8b; border:1px solid #6b1f1f}
+  .muted{color:var(--muted)}
+  .cols{display:grid; grid-template-columns:1fr; gap:12px}
+  @media(min-width:900px){ .cols{grid-template-columns:1fr 1fr} }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <strong>Ripley Weather • Debug</strong>
+    <div class="muted" id="now"></div>
+  </div>
+  <div class="row">
+    <button id="btnBusted">Open with cache-buster</button>
+    <button id="btnReload">Force reload (no cache)</button>
+  </div>
+</header>
+
+<main>
+  <section>
+    <h2>1) Pages Source & Headers</h2>
+    <div class="row">
+      <button id="btnFetchIndex">Fetch current index.html</button>
+      <span id="idxStatus" class="pill warn">pending</span>
+    </div>
+    <div class="cols">
+      <div>
+        <div class="muted">Response headers</div>
+        <pre id="idxHeaders">—</pre>
+      </div>
+      <div>
+        <div class="muted">First 2,000 chars of HTML</div>
+        <pre id="idxSnippet">—</pre>
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <div class="muted">Detected EXEC_URL (from index.html):</div>
+      <input type="text" id="execDetected" readonly placeholder="(not found yet)">
+    </div>
+  </section>
+
+  <section>
+    <h2>2) Apps Script JSONP Test</h2>
+    <div class="row">
+      <input type="text" id="execInput" placeholder="Paste EXEC_URL or Leave blank to use detected" />
+      <button id="btnTestJsonp">Test JSONP</button>
+      <span id="jsonpStatus" class="pill warn">pending</span>
+    </div>
+    <div class="cols">
+      <div>
+        <div class="muted">Meta</div>
+        <pre id="jsonpMeta">—</pre>
+      </div>
+      <div>
+        <div class="muted">Raw callback preview</div>
+        <pre id="jsonpPreview">—</pre>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>3) CNAME file (GitHub Pages domain pin)</h2>
+    <div class="row">
+      <button id="btnCname">Fetch /CNAME</button>
+      <span id="cnameStatus" class="pill warn">pending</span>
+    </div>
+    <pre id="cnameText">—</pre>
+    <div class="muted">Expected content: <code>ripleyweather.us</code></div>
+  </section>
+
+  <section>
+    <h2>4) Browser Cache / Service Worker</h2>
+    <div class="row">
+      <button id="btnUnregSW">Unregister service workers</button>
+      <button id="btnClearStor">Clear localStorage + sessionStorage</button>
+      <button id="btnClearCaches">Clear CacheStorage</button>
+    </div>
+    <pre id="swInfo">—</pre>
+  </section>
+
+  <section>
+    <h2>5) Quick Links</h2>
+    <div class="row">
+      <a href="/" target="_blank"><button>Open site</button></a>
+      <a href="/?v=testcheck" target="_blank"><button>Open site (with ?v=)</button></a>
+      <a href="view-source:/" target="_blank"><button>View Source (browser)</button></a>
+      <a href="https://raw.githubusercontent.com/GeekNerdCarp/ripleyweather/main/index.html" target="_blank"><button>Raw index.html (GitHub)</button></a>
+    </div>
+  </section>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const now = new Date();
+  $('now').textContent = now.toLocaleString();
+
+  function headersToText(headers) {
+    const out = [];
+    for (const [k,v] of headers.entries()) out.push(k + ': ' + v);
+    return out.join('\n') || '—';
+  }
+
+  async function fetchIndex() {
+    $('idxStatus').className = 'pill warn';
+    $('idxStatus').textContent = 'loading…';
+    try {
+      const url = new URL(location.origin + '/index.html');
+      url.searchParams.set('raw', '1');
+      url.searchParams.set('v', Date.now());
+      const res = await fetch(url.toString(), { cache: 'no-store' });
+      const text = await res.text();
+      $('idxHeaders').textContent = headersToText(res.headers);
+      $('idxSnippet').textContent = text.slice(0, 2000) || '—';
+      $('idxStatus').className = 'pill ok';
+      $('idxStatus').textContent = 'ok';
+
+      // Try to extract EXEC_URL
+      const m = text.match(/const\s+EXEC_URL\s*=\s*['"]([^'"]+)['"]/);
+      if (m) $('execDetected').value = m[1];
+      else $('execDetected').value = '(not found in index.html)';
+    } catch (e) {
+      $('idxStatus').className = 'pill err';
+      $('idxStatus').textContent = 'error';
+      $('idxHeaders').textContent = '—';
+      $('idxSnippet').textContent = String(e);
+    }
+  }
+
+  // JSONP test
+  function testJSONP() {
+    $('jsonpStatus').className = 'pill warn';
+    $('jsonpStatus').textContent = 'loading…';
+    $('jsonpMeta').textContent = '—';
+    $('jsonpPreview').textContent = '—';
+
+    const exec = $('execInput').value.trim() || $('execDetected').value.trim();
+    if (!exec || exec.startsWith('(') || exec === '(not found in index.html)') {
+      $('jsonpStatus').className = 'pill err';
+      $('jsonpStatus').textContent = 'no EXEC_URL';
+      return;
+    }
+    const cbName = 'debugCB_' + Math.random().toString(36).slice(2,8);
+    const s = document.createElement('script');
+    const src = `${exec}?callback=${cbName}&t=${Date.now()}`;
+
+    window[cbName] = (payload) => {
+      try {
+        $('jsonpStatus').className = 'pill ok';
+        $('jsonpStatus').textContent = 'ok';
+        $('jsonpMeta').textContent = JSON.stringify(payload?.meta || payload, null, 2);
+        $('jsonpPreview').textContent = `${cbName}(${JSON.stringify({meta: payload?.meta}, null, 2)} … )`;
+      } catch (err) {
+        $('jsonpStatus').className = 'pill err';
+        $('jsonpStatus').textContent = 'parse error';
+        $('jsonpMeta').textContent = String(err);
+      } finally {
+        try { delete window[cbName]; } catch(_) {}
+        document.head.removeChild(s);
+      }
+    };
+    s.onerror = () => {
+      $('jsonpStatus').className = 'pill err';
+      $('jsonpStatus').textContent = 'load error';
+      $('jsonpMeta').textContent = 'Script failed to load (network/CORS/URL).';
+      try { delete window[cbName]; } catch(_) {}
+      try { document.head.removeChild(s); } catch(_) {}
+    };
+    s.src = src;
+    s.async = true;
+    document.head.appendChild(s);
+  }
+
+  // Service worker & storage helpers
+  async function swInfo() {
+    let out = [];
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      out.push('ServiceWorkers registered: ' + regs.length);
+      regs.forEach((r,i)=> out.push(`  [${i}] scope=${r.scope}`));
+    } else {
+      out.push('ServiceWorkers not supported in this browser.');
+    }
+    out.push('localStorage keys: ' + Object.keys(localStorage).length);
+    out.push('sessionStorage keys: ' + Object.keys(sessionStorage).length);
+    try {
+      const keys = await caches.keys();
+      out.push('CacheStorage buckets: ' + keys.length + (keys.length? ' — ' + keys.join(', ') : ''));
+    } catch (e) {
+      out.push('CacheStorage not available: ' + e);
+    }
+    $('swInfo').textContent = out.join('\n');
+  }
+
+  async function unregSW() {
+    if (!('serviceWorker' in navigator)) return;
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const r of regs) await r.unregister();
+    await swInfo();
+  }
+  function clearStor() {
+    localStorage.clear();
+    sessionStorage.clear();
+    swInfo();
+  }
+  async function clearCaches() {
+    if (!('caches' in window)) return swInfo();
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+    swInfo();
+  }
+
+  // Buttons
+  $('btnFetchIndex').addEventListener('click', fetchIndex);
+  $('btnTestJsonp').addEventListener('click', testJSONP);
+  $('btnCname').addEventListener('click', async () => {
+    $('cnameStatus').className = 'pill warn';
+    $('cnameStatus').textContent = 'loading…';
+    $('cnameText').textContent = '—';
+    try {
+      const res = await fetch('/CNAME?v=' + Date.now(), { cache:'no-store' });
+      $('cnameText').textContent = await res.text();
+      $('cnameStatus').className = 'pill ok';
+      $('cnameStatus').textContent = res.ok ? 'ok' : 'missing';
+    } catch (e) {
+      $('cnameStatus').className = 'pill err';
+      $('cnameStatus').textContent = 'error';
+      $('cnameText').textContent = String(e);
+    }
+  });
+  $('btnUnregSW').addEventListener('click', unregSW);
+  $('btnClearStor').addEventListener('click', clearStor);
+  $('btnClearCaches').addEventListener('click', clearCaches);
+
+  $('btnBusted').addEventListener('click', () => {
+    const u = new URL(location.origin + '/');
+    u.searchParams.set('v', Date.now());
+    window.open(u.toString(), '_blank');
+  });
+  $('btnReload').addEventListener('click', () => {
+    // Best-effort no-cache reload
+    location.href = '/?v=' + Date.now();
+  });
+
+  // Auto-run a couple of checks
+  fetchIndex();
+  swInfo();
+</script>
+</body>
+</html>
