@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<!-- fresh install v1 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Current Ripley, OH Weather Outlook</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <style>
+    :root{
+      --bg:#0f2f5a; --bg2:#0a1b33; --panel:#0f2a4d; --muted:#cfe6ff; --text:#fff; --accent:#b9e3ff; --border:#1b4f85;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);font:500 16px/1.5 system-ui,Segoe UI,Roboto,Arial}
+    header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,#13457f,#0f2f5a);border-bottom:2px solid var(--border);padding:10px 14px;display:flex;gap:12px;align-items:center;justify-content:space-between}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#009ad6,#005aa3);display:grid;place-items:center;font-weight:800}
+    .muted{color:var(--muted)}
+    .controls{display:flex;gap:8px;align-items:center}
+    button{background:#0b2b52;border:1px solid var(--border);color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
+    button:disabled{opacity:.6}
+    #spin{display:none;width:.8em;height:.8em;background:#fff;border-radius:50%;animation:pulse .9s infinite alternate}
+    @keyframes pulse{from{opacity:.35} to{opacity:1}}
+    main{max-width:1100px;margin:0 auto;padding:14px}
+    section.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;margin:14px 0;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .bar{padding:10px 14px;font-weight:800;background:linear-gradient(180deg,#13457f,#0f2f5a);border-bottom:3px solid #143c6a50;display:flex;gap:10px;align-items:center}
+    .body{padding:12px 14px}
+    a{color:var(--accent)}
+    footer{margin:18px 0 24px;color:var(--muted);font-size:.9rem}
+    footer ul{margin:.4rem 0 0 1rem}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">WX</div>
+      <div>
+        <div id="runTitle" style="font-weight:800">Ripley Weather</div>
+        <div id="runStamp" class="muted" style="font-size:.9rem">—</div>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="refreshBtn">↻ Refresh</button>
+      <span id="spin" aria-hidden="true"></span>
+    </div>
+  </header>
+
+  <main>
+    <section class="card"><div class="bar">🔎 Quick Look</div><div id="quickHtml" class="body">Loading…</div></section>
+    <section class="card"><div class="bar">📋 Key Cards</div><div id="cardsHtml" class="body">Loading…</div></section>
+    <section class="card"><div class="bar">📝 AFD (External)</div>
+      <div class="body"><a id="afdLink" href="#" target="_blank" rel="noopener">Open latest NWS ILN AFD</a></div>
+    </section>
+    <section class="card"><div class="bar">📆 7-Day Outlook</div><div id="sevenHtml" class="body">Loading…</div></section>
+    <section class="card"><div class="bar">🕒 24-Hour Planner</div><div id="plannerHtml" class="body">Loading…</div></section>
+    <section class="card"><div class="bar">📈 Trends & Diagnostics</div><div id="trendsHtml" class="body">Loading…</div></section>
+    <section class="card"><div class="bar">⛈ Severe Weather</div><div id="severeHtml" class="body">Loading…</div></section>
+    <section class="card"><div class="bar">🛰 Radar & Satellite</div><div id="radarHtml" class="body">Loading…</div></section>
+    <section class="card"><div class="bar">⚡ Lightning</div><div id="lightningHtml" class="body">Loading…</div></section>
+    <section class="card"><div class="bar">⚠️ Alerts & Hazards</div><div id="alertsHtml" class="body">Loading…</div></section>
+    <section class="card"><div class="bar">🌬 Air & Health</div><div id="airHtml" class="body">Loading…</div></section>
+    <section class="card"><div class="bar">🏫 Local Impacts</div><div id="localHtml" class="body">Loading…</div></section>
+    <section class="card"><div class="bar">🌊 Rivers & Streams</div><div id="riversHtml" class="body">Loading…</div></section>
+    <section class="card"><div class="bar">📊 Climatology & Records</div><div id="recordsHtml" class="body">Loading…</div></section>
+    <section class="card"><div class="bar">🌌 Astronomy & Skywatch</div><div id="astroHtml" class="body">Loading…</div></section>
+    <section class="card"><div class="bar">✅ Bottom Line</div><div id="bottomHtml" class="body">Loading…</div></section>
+
+    <footer>
+      <div><strong>Created by Matthew Carpenter</strong> — <a href="mailto:matthew@carpsemail.com">matthew@carpsemail.com</a></div>
+      <div style="margin-top:.4rem"><em>Data Sources:</em></div>
+      <ul>
+        <li>NOAA / NWS ILN — Forecast, Alerts</li>
+        <li>Open-Meteo — Backup Forecast & Astronomy</li>
+        <li>AirNow — AQI (when available)</li>
+        <li>LightningMaps.org — live strikes</li>
+        <li>GOES / NWS imagery — radar & satellite</li>
+      </ul>
+    </footer>
+  </main>
+
+  <script>
+    // ==== Replace with your working Apps Script URL ====
+    const EXEC_URL = "https://script.google.com/macros/s/AKfycbxEHXreFLXPTRzpnbU4Zzhz09iLXD9TyzxSyeTFfz6vzXLXzJdHcisLpHEHKH3U35K36w/exec";
+    const REV = "fresh-install-v1";
+
+    const map = {
+      quickHtml:'quick', cardsHtml:'cards', sevenHtml:'sevenDay', plannerHtml:'hourly',
+      trendsHtml:'trends', severeHtml:'severe', radarHtml:'radar', lightningHtml:'lightning',
+      alertsHtml:'alerts', airHtml:'air', localHtml:'local', riversHtml:'rivers',
+      recordsHtml:'records', astroHtml:'astro', bottomHtml:'bottom'
+    };
+
+    function applyReport(r){
+      document.title = r?.meta?.runTitle || 'Current Ripley, OH Weather Outlook';
+      document.getElementById('runTitle').textContent = r?.meta?.runTitle || 'Ripley Weather';
+      document.getElementById('runStamp').textContent = r?.meta?.runTime ? `${r.meta.runTime} • #${r.meta.totalToday||'—'}` : '—';
+      const afd = document.getElementById('afdLink'); if (afd && r?.afdLink) afd.href = r.afdLink;
+
+      for (const id in map){
+        const el = document.getElementById(id);
+        const key = map[id];
+        el.innerHTML = r && r[key] ? r[key] : '<p class="muted">— (no data)</p>';
+      }
+      document.getElementById('spin').style.display='none';
+      document.getElementById('refreshBtn').disabled=false;
+    }
+
+    function loadJSONP(){
+      const cb = 'cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      window[cb] = (data)=>{ try{ applyReport(data); } finally { delete window[cb]; } };
+      const s = document.createElement('script');
+      s.src = `${EXEC_URL}?format=jsonp&callback=${cb}&rev=${encodeURIComponent(REV)}&t=${Date.now()}`;
+      s.defer = true;
+      s.onerror = ()=>{
+        document.getElementById('spin').style.display='none';
+        document.getElementById('refreshBtn').disabled=false;
+        alert('Live data failed to load. Try refresh again.');
+      };
+      document.head.appendChild(s);
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', ()=>{
+      document.getElementById('refreshBtn').disabled=true;
+      document.getElementById('spin').style.display='inline-block';
+      loadJSONP();
+    });
+
+    loadJSONP();
+  </script>
+</body>
+</html>
